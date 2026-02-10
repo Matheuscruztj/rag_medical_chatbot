@@ -225,3 +225,91 @@ exit
 ```bash
 docker restart jenkins
 ```
+
+
+### 8. Go to Jenkins Dashboard and Sign In Again
+
+## ==> 2. 🔗 Jenkins Integration with GitHub
+
+### 1. Generate a GitHub Personal Access Token
+
+- Go to **GitHub** → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+- Click **Generate new token (classic)**
+- Provide:
+  - A **name** (e.g., `Jenkins Integration`)
+  - Select scopes:
+    - `repo` (for full control of private repositories)
+    - `admin:repo_hook` (for webhook integration)
+
+- Generate the token and **save it securely** (you won’t see it again!).
+
+> ℹ️ **What is this token?**
+> A GitHub token is a secure way to authenticate Jenkins (or any CI/CD tool) to access your GitHub repositories without needing your GitHub password. It's safer and recommended over using plain credentials.
+
+---
+
+### 2. Add GitHub Token to Jenkins Credentials
+
+- Go to **Jenkins Dashboard** → **Manage Jenkins** → **Credentials** → **(Global)** → **Add Credentials**
+- Fill in the following:
+  - **Username:** Your GitHub username
+  - **Password:** Paste the GitHub token you just generated
+  - **ID:** `github-token`
+  - **Description:** `GitHub Token for Jenkins`
+
+Click **Save**.
+
+---
+
+### 3. Create a New Pipeline Job in Jenkins
+
+- Go back to **Jenkins Dashboard**
+- Click **New Item** → Select **Pipeline**
+- Enter a name (e.g., `medical-rag-pipeline`)
+- Click **OK** → Scroll down, configure minimal settings → Click **Save**
+
+> ⚠️ You will have to configure pipeline details **again** in the next step
+
+---
+
+### 4. Generate Checkout Script from Jenkins UI
+
+- In the left sidebar of your pipeline project, click **Pipeline Syntax**
+- From the dropdown, select **`checkout: General SCM`**
+- Fill in:
+  - SCM: Git
+  - Repository URL: Your GitHub repo URL
+  - Credentials: Select the `github-token` you just created
+- Click **Generate Pipeline Script**
+- Copy the generated Groovy script (e.g., `checkout([$class: 'GitSCM', ...])`)
+
+---
+
+### 5. Create a `Jenkinsfile` in Your Repo ( Already done )
+
+- Open your project in **VS Code**
+- Create a file named `Jenkinsfile` in the root directory
+
+
+### 6. Push the Jenkinsfile to GitHub
+
+```bash
+git add Jenkinsfile
+git commit -m "Add Jenkinsfile for CI pipeline"
+git push origin main
+```
+
+---
+
+### 7. Trigger the Pipeline
+
+- Go to **Jenkins Dashboard** → Select your pipeline → Click **Build Now**
+
+🎉 **You’ll see a SUCCESS message if everything works!**
+
+✅ **Your GitHub repository has been cloned inside Jenkins’ workspace!**
+
+---
+
+> 🔁 If you already cloned the repo with a `Jenkinsfile` in it, you can skip creating a new one manually.
+
