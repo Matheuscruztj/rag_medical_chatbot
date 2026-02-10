@@ -4,6 +4,14 @@ A Retrieval-Augmented Generation (RAG) chatbot designed to answer medical questi
 
 The project features a complete **CI/CD Pipeline** using **Jenkins**, **Docker**, **Trivy**, **AWS ECR**, and **AWS App Runner** for automated deployment.
 
+## Screenshots
+
+![Interface](prints/front.png)
+*Figure 1: The interface, where users can input their medical questions and receive answers based on the provided documentation.*
+
+![No context](prints/no_context.png)
+*Figure 2: The system response when no relevant context is found in the documentation.*
+
 ## 🏗️ Architecture Overview
 
 The system is built as a web application using **Flask**. It follows a modular architecture where the retrieval logic, LLM integration, and vector storage are decoupled.
