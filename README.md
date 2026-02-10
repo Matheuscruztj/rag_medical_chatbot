@@ -173,4 +173,55 @@ Make sure **Docker Desktop is running in the background**, then build the image:
 ```bash
 docker build -t jenkins-dind .
 ```
+### 3. Run Jenkins Container
 
+```bash
+docker run -d \
+  --name jenkins \
+  --privileged \
+  -p 8080:8080 \
+  -p 50000:50000 \
+  -v jenkins_home:/var/jenkins_home \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  jenkins-dind
+```
+
+> ✅ If successful, you’ll get a long alphanumeric container ID
+
+### 4. Check Jenkins Logs and Get Initial Password
+
+```bash
+docker ps
+docker logs jenkins
+```
+
+If the password isn’t visible, run:
+
+```bash
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+### 5. Access Jenkins Dashboard
+
+- Open your browser and go to: [http://localhost:8080](http://localhost:8080)
+
+### 6. Install Python Inside Jenkins Container
+
+Back in the terminal:
+
+```bash
+docker exec -u root -it jenkins bash
+apt update -y
+apt install -y python3
+python3 --version
+ln -s /usr/bin/python3 /usr/bin/python
+python --version
+apt install -y python3-pip
+exit
+```
+
+### 7. Restart Jenkins Container
+
+```bash
+docker restart jenkins
+```
