@@ -9,7 +9,7 @@ The project features a complete **CI/CD Pipeline** using **Jenkins**, **Docker**
 ![Interface](prints/front.png)
 *Figure 1: The interface, where users can input their medical questions and receive answers based on the provided documentation.*
 
-![No context](prints/no_context.png)
+![No context](prints/no-context.png)
 *Figure 2: The system response when no relevant context is found in the documentation.*
 
 ## 🏗️ Architecture Overview
