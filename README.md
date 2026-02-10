@@ -2,30 +2,58 @@
 
 A Retrieval-Augmented Generation (RAG) chatbot designed to answer medical questions based on provided PDF documentation. This system leverages the **Groq API** for high-speed LLM inference and **FAISS** for efficient vector similarity search.
 
+The project features a complete **CI/CD Pipeline** using **Jenkins**, **Docker**, **Trivy**, **AWS ECR**, and **AWS App Runner** for automated deployment.
+
 ## 🏗️ Architecture Overview
 
 The system is built as a web application using **Flask**. It follows a modular architecture where the retrieval logic, LLM integration, and vector storage are decoupled.
 
+## 🧠 Technical Concepts & Architecture
+
+This section provides a deeper look into the system's design, suitable for developers of all levels.
+
+### Core Concepts
+*   **RAG (Retrieval-Augmented Generation):** A technique that enhances LLM responses by retrieving relevant data from an external source (our PDF documents) before generating an answer. This reduces hallucinations and provides specific, document-based answers.
+*   **Vector Database (FAISS):** We use **Facebook AI Similarity Search** (FAISS) as our vector store. It is a library for efficient similarity search and clustering of dense vectors. In this project, it runs locally on the CPU, storing embeddings of the medical documents.
+*   **Embeddings:** We use HuggingFace models to convert text into numerical vectors. Text with similar semantic meaning results in vectors that are mathematically close to each other.
+*   **Groq API:** An inference engine that provides extremely fast LLM responses. We use it to generate the final natural language answer based on the context retrieved from FAISS.
+
 ### C4 Model - Context Diagram
-This diagram shows the system in its environment.
+This diagram shows the system in its environment, including the deployment ecosystem.
 
 ```mermaid
 C4Context
     title System Context Diagram for RAG Medical Chatbot
 
-    Person(user, "User", "A medical professional or patient seeking information.")
+    Person(user, "User", "A medical professional or patient.")
+    Person(dev, "Developer", "Maintains the code.")
+
     System(rag_system, "RAG Medical Chatbot", "Allows users to query medical documents.")
+
+    System_Ext(github, "GitHub", "Source Code Management & Webhooks.")
+    System_Ext(jenkins, "Jenkins", "CI/CD Build Server.")
+    System_Ext(trivy, "Trivy", "Vulnerability Scanner.")
+    System_Ext(aws_ecr, "AWS ECR", "Elastic Container Registry.")
+    System_Ext(aws_apprunner, "AWS App Runner", "Managed Container Service.")
     
     System_Ext(groq_api, "Groq API", "Provides high-performance LLM inference.")
     System_Ext(hf_hub, "HuggingFace Hub", "Provides embedding models.")
 
-    Rel(user, rag_system, "Asks questions via Web UI", "HTTPS")
-    Rel(rag_system, groq_api, "Sends prompt + context", "API")
-    Rel(rag_system, hf_hub, "Downloads embedding models", "HTTPS")
+    Rel(dev, github, "Pushes code")
+    Rel(github, jenkins, "Triggers build (Webhook)")
+    Rel(jenkins, trivy, "Scans Image")
+    Rel(jenkins, aws_ecr, "Pushes Docker Image")
+    Rel(jenkins, aws_apprunner, "Triggers Deployment")
+    Rel(aws_apprunner, aws_ecr, "Pulls Image")
+    Rel(aws_apprunner, rag_system, "Hosts")
+
+    Rel(user, rag_system, "Asks questions (HTTPS)")
+    Rel(rag_system, groq_api, "Sends prompt + context (API)")
+    Rel(rag_system, hf_hub, "Downloads models (HTTPS)")
 ```
 
 ### C4 Model - Container Diagram
-This diagram shows the high-level containers and technologies used.
+This diagram shows the high-level containers and technologies used in the runtime environment.
 
 ```mermaid
 C4Container
@@ -33,9 +61,9 @@ C4Container
 
     Person(user, "User", "Interacts with the chatbot")
 
-    Container_Boundary(c1, "RAG System") {
+    Container_Boundary(aws_env, "AWS App Runner Environment") {
         Container(web_app, "Web Application", "Flask, Python", "Handles HTTP requests and orchestrates the RAG flow.")
-        Container(vector_store, "Vector Store", "FAISS", "Stores document embeddings for fast retrieval.")
+        Container(vector_store, "Vector Store", "FAISS (Local/CPU)", "Stores document embeddings using Facebook AI Similarity Search for O(1) retrieval complexity.")
         Container(retriever, "Retriever Engine", "LangChain", "Combines LLM and Vector Store to generate answers.")
     }
 
@@ -47,7 +75,36 @@ C4Container
     Rel(retriever, groq_api, "Generates answers")
 ```
 
-### System Flow (Sequence Diagram)
+### CI/CD Pipeline Flow (Sequence Diagram)
+How the code goes from the developer to production:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant D as Developer
+    participant G as GitHub
+    participant J as Jenkins
+    participant T as Trivy
+    participant ECR as AWS ECR
+    participant AR as AWS App Runner
+
+    D->>G: Push Code (git push)
+    G->>J: Webhook Trigger
+    J->>G: Checkout Code
+    J->>J: Build Docker Image
+    J->>T: Scan Image (Vulnerabilities)
+    alt Vulnerabilities Found
+        T-->>J: Fail Build
+    else Secure
+        T-->>J: Pass
+    end
+    J->>ECR: Push Image (docker push)
+    J->>AR: Start Deployment (aws apprunner)
+    AR->>ECR: Pull New Image
+    AR->>AR: Deploy Container
+```
+
+### Runtime System Flow (Sequence Diagram)
 How a user query is processed:
 
 ```mermaid
@@ -61,27 +118,45 @@ sequenceDiagram
     U->>F: Submits Question (POST /)
     F->>R: create_qa_chain()
     R->>V: Search(query, k=1)
-    V-->>R: Return Relevant Documents (Context)
+    V-->>R: Return Top-k Chunks (Context)
     R->>L: Invoke(Prompt + Context + Question)
     L-->>R: Return Answer
     R-->>F: Return Result
     F-->>U: Render Response (HTML)
 ```
 
-## 🚀 Features
+## � Tech Stack
+
+*   **LLM Integration:** [LangChain](https://www.langchain.com/) - Framework for orchestrating the RAG pipeline.
+*   **Vector Database:** [FAISS](https://github.com/facebookresearch/faiss) - Efficient similarity search for dense vectors.
+*   **Embeddings:** [HuggingFace](https://huggingface.co/) - Source of the `sentence-transformers` models used for document embedding.
+*   **PDF Processing:** [PyPDF](https://pypi.org/project/pypdf/) - Library for loading and parsing PDF documents.
+*   **Backend:** [Flask](https://flask.palletsprojects.com/) - Lightweight Python web framework.
+*   **Frontend:** HTML5, CSS3 - Simple and responsive user interface.
+*   **Containerization:** [Docker](https://www.docker.com/) - Used for creating consistent, portable application environments (Multi-stage builds).
+*   **Security:** [Aqua Trivy](https://trivy.dev/) - Comprehensive security scanner for container images.
+*   **CI/CD:** [Jenkins](https://www.jenkins.io/) - Automation server for building, testing, and deploying.
+*   **Cloud Deployment:** [AWS App Runner](https://aws.amazon.com/apprunner/) - Managed service for running containerized web applications.
+
+## �🚀 Features
 
 *   **High Performance:** Uses Groq API for near-instantaneous LLM responses.
-*   **Local Vector Store:** Uses FAISS CPU for efficient, local similarity search.
+*   **Vector Database (FAISS):** Utilizes Facebook AI Similarity Search (FAISS) for efficient, local dense vector clustering and similarity search. This allows for rapid retrieval of relevant document chunks without external database dependencies.
 *   **Custom Prompts:** Tailored medical prompts to ensure concise and accurate answers (2-3 lines).
 *   **Dockerized:** Fully containerized with a multi-stage build for a lightweight image (~441MB).
-*   **CPU Optimized:** configured to run efficiently on CPU environments (PyTorch CPU).
+*   **CPU Optimized:** Configured to run efficiently on CPU environments (PyTorch CPU).
+*   **Automated Deployment:** Full CI/CD pipeline using Jenkins and AWS.
+*   **Secure:** Automated container vulnerability scanning with Trivy.
 
 ## 🛠️ Setup & Installation
 
 ### Prerequisites
-*   Docker
-*   Groq API Key
-*   HuggingFace Token (optional, for accessing gated models if needed)
+*   **Git:** To clone the repository.
+*   **Docker:** For building and running the application container.
+*   **Python 3.10+:** (Optional) For local development without Docker.
+*   **Groq API Key:** Required for the LLM.
+*   **HuggingFace Token:** Required for downloading embedding models.
+*   **AWS Account:** (Optional) For ECR & App Runner deployment.
 
 ### 1. Clone the Repository
 ```bash
@@ -96,15 +171,29 @@ GROQ_API_KEY=your_groq_api_key_here
 HF_TOKEN=your_huggingface_token_here
 ```
 
-### 3. Build and Run with Docker
+### 3. Initialize Vector Database (Data Ingestion)
+**Crucial Step:** Before starting the application, you must process the PDF documents to create the FAISS vector index.
+
+1.  Place your medical PDF documents in the `data/` directory.
+2.  Run the data loader script to split the text into chunks and save the embeddings to the `vectorstore/` directory.
+
+```bash
+# Ensure you are in the project root and virtual environment is active
+python app/components/data_loader.py
+```
+
+*   **What this does:** It reads all PDFs in `data/`, creates text chunks (using LangChain), generates embeddings (using HuggingFace models), and saves the index locally to `vectorstore/`.
+*   **Note:** If using Docker, run this step *locally* before building the image, so the populated `vectorstore/` is copied into the container. Alternatively, you can run it inside the container.
+
+### 4. Build and Run with Docker (Local)
 We use a multi-stage Docker build to keep the image size small.
 
 ```bash
 # Build the image
-docker build -t rag-medical-chatbot:optimized .
+docker build -t rag-medical-chatbot .
 
 # Run the container
-docker run -p 5000:5000 --env-file .env rag-medical-chatbot:optimized
+docker run -p 5000:5000 --env-file .env rag-medical-chatbot
 ```
 
 Access the application at `http://localhost:5000`.
@@ -122,13 +211,40 @@ rag_medical_chatbot/
 │   │   ├── pdf_loader.py    # Document ingestion
 │   │   └── embeddings.py    # Embedding model configuration
 │   └── config/              # Configuration settings
+├── custom_jenkins/          # Jenkins Docker configuration
+│   └── Dockerfile           # Jenkins-DinD image
 ├── data/                    # PDF documents storage
 ├── vectorstore/             # Persisted FAISS index
 ├── requirements.txt         # Python dependencies
-└── Dockerfile               # Multi-stage Docker configuration
+├── Dockerfile               # Application Dockerfile
+└── Jenkinsfile              # CI/CD Pipeline definition
 ```
 
-## 🔧 Development
+## 🔧 CI/CD Pipeline Setup
+
+This project includes a fully automated CI/CD pipeline.
+
+### 1. Jenkins Setup
+The project uses a custom Jenkins Docker image with Docker-in-Docker (DinD) support.
+
+```bash
+cd custom_jenkins
+docker build -t jenkins-dind .
+docker run -d --name jenkins-dind --privileged -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins-dind
+```
+
+### 2. Pipeline Configuration
+The `Jenkinsfile` defines the following stages:
+1.  **Clone:** Pulls code from GitHub.
+2.  **Build & Scan:** Builds the Docker image and scans for vulnerabilities using **Trivy**. If vulnerabilities (High/Critical) are found, the build can be configured to fail.
+3.  **Push:** Pushes the verified image to **AWS ECR**.
+4.  **Deploy:** Triggers a deployment on **AWS App Runner**.
+
+### 3. Required Credentials in Jenkins
+*   `github-token`: For accessing the repository.
+*   `aws-token`: AWS credentials (Access Key & Secret) for ECR and App Runner access.
+
+## 🔧 Development (Local)
 
 To run locally without Docker:
 
@@ -144,14 +260,10 @@ To run locally without Docker:
     ```
 3.  Run the app:
     ```bash
-    python app/application.py
+    PYTHONPATH=$PWD python app/application.py
     ```
 
-## ✅ Prerequisites Checklist (Complete These Before Moving Forward)
-- [ ] **Docker Desktop** is installed and running in the background
-- [ ] **Code versioning** is properly set up using GitHub (webhook repository pushed and updated)
-- [ ] **Dockerfile** is created and configured for the project
-- [ ] **Dockerfile** is also created and configured for **Jenkins**
+## Additional information for deployment
 
 ## ==> 1. 🚀 Jenkins Setup for Deployment
 
@@ -173,16 +285,17 @@ Make sure **Docker Desktop is running in the background**, then build the image:
 ```bash
 docker build -t jenkins-dind .
 ```
+
 ### 3. Run Jenkins Container
 
 ```bash
-docker run -d \
-  --name jenkins \
-  --privileged \
-  -p 8080:8080 \
-  -p 50000:50000 \
-  -v jenkins_home:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+docker run -d ^
+  --name jenkins-dind ^
+  --privileged ^
+  -p 8080:8080 ^
+  -p 50000:50000 ^
+  -v /var/run/docker.sock:/var/run/docker.sock ^
+  -v jenkins_home:/var/jenkins_home ^
   jenkins-dind
 ```
 
@@ -192,13 +305,13 @@ docker run -d \
 
 ```bash
 docker ps
-docker logs jenkins
+docker logs jenkins-dind
 ```
 
 If the password isn’t visible, run:
 
 ```bash
-docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+docker exec jenkins-dind cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
 ### 5. Access Jenkins Dashboard
@@ -210,7 +323,7 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 Back in the terminal:
 
 ```bash
-docker exec -u root -it jenkins bash
+docker exec -u root -it jenkins-dind bash
 apt update -y
 apt install -y python3
 python3 --version
@@ -223,9 +336,8 @@ exit
 ### 7. Restart Jenkins Container
 
 ```bash
-docker restart jenkins
+docker restart jenkins-dind
 ```
-
 
 ### 8. Go to Jenkins Dashboard and Sign In Again
 
@@ -382,7 +494,6 @@ aws --version
 exit
 ```
 
-
 ---
 
 ### 6. Create an ECR Repository
@@ -394,6 +505,8 @@ exit
 
 ### 7. Add Build, Scan, and Push Stage in Jenkinsfile (  Already done if cloned )
 
+
+
 > 🔐 **Tip**: Change `--exit-code 0` to `--exit-code 1` in Trivy to make the pipeline fail on vulnerabilities.
 
 ---
@@ -403,7 +516,7 @@ exit
 If you encounter Docker socket permission issues, fix with:
 
 ```bash
-docker exec -u root -it jenkins bash
+docker exec -u root -it jenkins-dind bash
 chown root:docker /var/run/docker.sock
 chmod 660 /var/run/docker.sock
 getent group docker
@@ -411,7 +524,7 @@ getent group docker
 usermod -aG docker jenkins
 exit
 
-docker restart jenkins
+docker restart jenkins-dind
 ```
 
 Then open **Jenkins Dashboard** again to continue.
