@@ -1,0 +1,11 @@
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-core==0.3.0
+langchain-text-splitters==0.3.0
+langchain-huggingface
+sentence-transformers
+faiss-cpu
+pypdf
+flask
+python-dotenv
+langchain-groq
